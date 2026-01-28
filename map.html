@@ -62,17 +62,12 @@
     }
 
     .route-panel {
-      position: fixed;
+      position: absolute;
       left: 60%;
       bottom: 16px;
-      transform: translateX(-50%);
+      transform: translateX(-60%);
       width: min(900px, 94vw);
-      z-index: 900;
-      pointer-events: none;
-    }
-
-    .route-panel .route-card {
-      pointer-events: auto;
+      z-index: 450;
     }
 
     .route-card {
@@ -92,39 +87,6 @@
     #map {
       width: 100%;
       height: 100vh;
-    }
-
-    .map-overlay {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(15, 18, 22, 0.9);
-      border: 1px solid #273142;
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      z-index: 600;
-      display: none;
-    }
-
-    .map-overlay.active {
-      display: block;
-    }
-
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 12px;
-      background: #1f2937;
-      border: 1px solid #334155;
-    }
-
-    .status-chip strong {
-      color: var(--text);
     }
 
     .card {
@@ -200,15 +162,6 @@
     .filters-body {
       display: grid;
       gap: 12px;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: var(--text);
     }
 
     .filters label {
@@ -533,10 +486,6 @@
           </div>
           <div class="filters-body">
             <div>
-              <label for="filter-search">Поиск по названию</label>
-              <input class="search-input" id="filter-search" type="text" placeholder="Например: крепость" />
-            </div>
-            <div>
               <label for="filter-district">Район</label>
               <select id="filter-district"></select>
             </div>
@@ -573,23 +522,10 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>Статистика</h2>
-        <div class="route-summary">
-          <span class="status-chip">На карте: <strong id="stats-visible">0</strong></span>
-          <span class="status-chip">Всего: <strong id="stats-total">0</strong></span>
-        </div>
-        <div class="button-row" style="margin-top: 10px;">
-          <button class="btn secondary" id="show-all">Показать все на карте</button>
-          <button class="btn secondary" id="random-object">Случайный объект</button>
-        </div>
-      </section>
-
     </aside>
 
     <main class="map-wrapper">
       <div id="map"></div>
-      <div class="map-overlay" id="map-status">Загрузка объектов…</div>
       <aside class="details-panel">
         <section class="card hidden" id="object-card">
           <div class="card-header">
@@ -634,13 +570,149 @@
   </div>
 
   <script>
-    const OBJECTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSvpNhww_FU-6ufnp7Qs42I4xX9m1qn7UvPIeTXAGgS7mRkTKc1_fFv744AslYUPNOSgJItAwEwxkOA/pub?gid=1695304486&single=true&output=csv";
+    const OBJECTS_RAW = [
+      {
+        uid: "ABH-001",
+        name: "Сухумская крепость",
+        district: "Сухум",
+        object_type: "Исторический объект",
+        access_status: "FULL",
+        difficulty_level: "Низкая",
+        fee_donation_adult: "200",
+        locality: "Сухум",
+        address_landmark: "Набережная Диоскуров, 1",
+        elevation_m: "12",
+        access_mode: "Свободный доступ",
+        hours_backend: "09:00-19:00",
+        hours_front: "Ежедневно",
+        source_checked: "Реестр 2024-05",
+        difficulty_details: "Асфальт",
+        parking_walk: "Парковка рядом",
+        water_near: "Да",
+        fee_donation_child: "100",
+        age_child: "6+",
+        min_age: "0",
+        restrictions: "Без ограничений",
+        access_notes: "Подходит для семей",
+        dress_code: "Удобная обувь",
+        kids_stroller: "Можно",
+        ovz_access: "Доступно",
+        ovz_toilet: "Нет",
+        rtk_done: "Да",
+        duration_recommended: "1 час",
+        coordinates_object: "43,0003; 41,0209",
+        coordinates_parking: "43,0010; 41,0198",
+        description: "Крепость на берегу моря с прогулочной зоной.",
+        rtk_link_embedded: "https://cloud.agisoft.com/embedded/123456"
+      },
+      {
+        uid: "ABH-002",
+        name: "Гегский водопад",
+        district: "Гудаута",
+        object_type: "Природный объект",
+        access_status: "DIFFICULT",
+        difficulty_level: "Высокая",
+        fee_donation_adult: "0",
+        locality: "Гега",
+        address_landmark: "Ущелье Гега",
+        elevation_m: "520",
+        access_mode: "По пропуску",
+        hours_backend: "10:00-18:00",
+        hours_front: "Лето",
+        source_checked: "Полевой объезд 2024-04",
+        difficulty_details: "Грунтовая дорога",
+        parking_walk: "Пешком 1 км",
+        water_near: "Да",
+        fee_donation_child: "0",
+        age_child: "7+",
+        min_age: "7",
+        restrictions: "Требуется внедорожник",
+        access_notes: "После дождя сложно",
+        dress_code: "Трекинг",
+        kids_stroller: "Нет",
+        ovz_access: "Нет",
+        ovz_toilet: "Нет",
+        rtk_done: "Нет",
+        duration_recommended: "2-3 часа",
+        coordinates_object: "43,3341; 40,4901",
+        coordinates_parking: "43,3305; 40,4865",
+        description: "Один из самых высоких водопадов Абхазии.",
+        rtk_link_embedded: ""
+      },
+      {
+        uid: "ABH-003",
+        name: "Пицундский маяк",
+        district: "Гагра",
+        object_type: "Морской объект",
+        access_status: "PARTIAL",
+        difficulty_level: "Средняя",
+        fee_donation_adult: "150",
+        locality: "Пицунда",
+        address_landmark: "Мыс Пицунда",
+        elevation_m: "35",
+        access_mode: "Экскурсия",
+        hours_backend: "10:00-17:00",
+        hours_front: "Выходные",
+        source_checked: "Реестр 2024-03",
+        difficulty_details: "Лесная тропа",
+        parking_walk: "Парковка 300 м",
+        water_near: "Да",
+        fee_donation_child: "75",
+        age_child: "5+",
+        min_age: "5",
+        restrictions: "Нужен гид",
+        access_notes: "Ограничено по времени",
+        dress_code: "Закрытая обувь",
+        kids_stroller: "Нет",
+        ovz_access: "Частично",
+        ovz_toilet: "Нет",
+        rtk_done: "Да",
+        duration_recommended: "1.5 часа",
+        coordinates_object: "43,1599; 40,3376",
+        coordinates_parking: "43,1580; 40,3390",
+        description: "Смотровая точка с видом на море.",
+        rtk_link_embedded: "https://cloud.agisoft.com/embedded/987654"
+      },
+      {
+        uid: "ABH-004",
+        name: "Чернореченский каньон",
+        district: "Очамчыра",
+        object_type: "Природный объект",
+        access_status: "FULL",
+        difficulty_level: "Средняя",
+        fee_donation_adult: "0",
+        locality: "Черноречье",
+        address_landmark: "Трасса Очамчыра",
+        elevation_m: "120",
+        access_mode: "Свободный доступ",
+        hours_backend: "",
+        hours_front: "Круглосуточно",
+        source_checked: "Полевой объезд 2024-02",
+        difficulty_details: "Лес",
+        parking_walk: "Парковка рядом",
+        water_near: "Да",
+        fee_donation_child: "0",
+        age_child: "0+",
+        min_age: "0",
+        restrictions: "Нет",
+        access_notes: "Берите воду",
+        dress_code: "Трекинг",
+        kids_stroller: "Нет",
+        ovz_access: "Нет",
+        ovz_toilet: "Нет",
+        rtk_done: "Нет",
+        duration_recommended: "2 часа",
+        coordinates_object: "42,9830; 41,4552",
+        coordinates_parking: "42,9820; 41,4561",
+        description: "Живописный каньон для прогулок.",
+        rtk_link_embedded: ""
+      }
+    ];
 
     const state = {
       objects: [],
       placemarks: [],
       filters: {
-        search: "",
         district: "",
         type: "",
         access: "",
@@ -667,81 +739,7 @@
       )}`;
     }
 
-    function parseCsv(text) {
-      const rows = [];
-      let row = [];
-      let cell = "";
-      let inQuotes = false;
-
-      for (let i = 0; i < text.length; i += 1) {
-        const char = text[i];
-        const next = text[i + 1];
-
-        if (char === "\"" && inQuotes && next === "\"") {
-          cell += "\"";
-          i += 1;
-          continue;
-        }
-        if (char === "\"") {
-          inQuotes = !inQuotes;
-          continue;
-        }
-        if (char === "\n" && !inQuotes) {
-          row.push(cell);
-          rows.push(row);
-          row = [];
-          cell = "";
-          continue;
-        }
-        if (char === "\r") {
-          continue;
-        }
-        if (char === "," && !inQuotes) {
-          row.push(cell);
-          cell = "";
-          continue;
-        }
-        cell += char;
-      }
-
-      if (cell.length || row.length) {
-        row.push(cell);
-        rows.push(row);
-      }
-      return rows;
-    }
-
-    function normalizeHeader(header) {
-      return header
-        .replace(/^\uFEFF/, "")
-        .replace(/"/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .replace(/\s/g, "_");
-    }
-
-    async function loadObjectsFromCsv() {
-      const response = await fetch(OBJECTS_CSV_URL, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Не удалось загрузить CSV: ${response.status}`);
-      }
-      const text = await response.text();
-      const rows = parseCsv(text).filter((row) => row.some((value) => value.trim() !== ""));
-      if (!rows.length) {
-        return [];
-      }
-      const headers = rows[0].map((header) => normalizeHeader(header));
-      return rows.slice(1).map((row) => {
-        const entry = {};
-        headers.forEach((key, index) => {
-          entry[key] = row[index] ?? "";
-        });
-        return entry;
-      });
-    }
-
     const filterSelectors = {
-      search: document.getElementById("filter-search"),
       district: document.getElementById("filter-district"),
       type: document.getElementById("filter-type"),
       access: document.getElementById("filter-access"),
@@ -760,11 +758,6 @@
     const filtersToggle = document.getElementById("filters-toggle");
     const listPanel = document.getElementById("list-panel");
     const listToggle = document.getElementById("list-toggle");
-    const mapStatus = document.getElementById("map-status");
-    const statsVisible = document.getElementById("stats-visible");
-    const statsTotal = document.getElementById("stats-total");
-    const showAllBtn = document.getElementById("show-all");
-    const randomObjectBtn = document.getElementById("random-object");
 
     const routePanel = document.getElementById("route-panel");
     const routeBuildBtn = document.getElementById("route-build");
@@ -805,19 +798,12 @@
       return [lat, lon];
     }
 
-    function normalizeObjects(items) {
-      return items.map((item) => {
-        const coords = item.coordinates_object
-          ? parseCoordinatePair(item.coordinates_object)
-          : [parseCoordinate(item.latitude), parseCoordinate(item.longitude)];
-        const normalizedCoords = coords && coords.every((value) => Number.isFinite(value)) ? coords : null;
-        const embedRaw = item.rtk_link_embedded || item.rtk_link || "";
-        const embedMatch = embedRaw.match(/src=["']([^"']+)["']/i);
-        const embedUrl = embedMatch ? embedMatch[1] : String(embedRaw).trim();
+    function normalizeObjects() {
+      return OBJECTS_RAW.map((item) => {
+        const coords = parseCoordinatePair(item.coordinates_object);
         return {
           ...item,
-          coordinates: normalizedCoords,
-          rtk_link_embedded: embedUrl,
+          coordinates: coords,
           feeCat: Number.parseFloat(String(item.fee_donation_adult).replace(",", ".")) > 0 ? "Платно" : "Бесплатно"
         };
       }).filter((item) => item.coordinates);
@@ -860,26 +846,19 @@
     }
 
     function matchesFilters(item) {
-      const { search, district, type, access, difficulty, fee } = state.filters;
-      const matchesSearch = !search || (item.name || "").toLowerCase().includes(search);
+      const { district, type, access, difficulty, fee } = state.filters;
       return (!district || item.district === district)
         && (!type || item.object_type === type)
         && (!access || item.access_status === access)
         && (!difficulty || item.difficulty_level === difficulty)
-        && (!fee || item.feeCat === fee)
-        && matchesSearch;
+        && (!fee || item.feeCat === fee);
     }
 
     function updatePlacemarkVisibility() {
-      let visibleCount = 0;
       state.placemarks.forEach(({ placemark, item }) => {
         const visible = matchesFilters(item);
         placemark.options.set("visible", visible);
-        if (visible) {
-          visibleCount += 1;
-        }
       });
-      statsVisible.textContent = String(visibleCount);
     }
 
     function buildCard(item) {
@@ -1036,26 +1015,9 @@
         });
       });
 
-      routeBuildBtn.disabled = getRoutePoints().length < 2;
+      routeBuildBtn.disabled = !(state.route.start && state.route.end);
       routeHideBtn.disabled = !state.route.visible;
       routeShareBtn.disabled = !(state.route.start || state.route.end || state.route.stops.length);
-    }
-
-    function getRoutePoints() {
-      const points = [];
-      if (state.route.start) {
-        points.push(state.route.start.coordinates);
-      }
-      if (state.route.stops.length) {
-        points.push(...state.route.stops.map((stop) => stop.coordinates));
-      }
-      if (state.route.end) {
-        points.push(state.route.end.coordinates);
-      }
-      if (!state.route.start && !state.route.end) {
-        return state.route.stops.map((stop) => stop.coordinates);
-      }
-      return points;
     }
 
     function updateObjectList() {
@@ -1080,23 +1042,6 @@
           }
         });
       });
-    }
-
-    function focusOnVisible() {
-      const visibleItems = state.objects.filter((item) => matchesFilters(item));
-      if (!visibleItems.length || !window.mapInstance) return;
-      const coords = visibleItems.map((item) => item.coordinates);
-      window.mapInstance.setBounds(coords, { checkZoomRange: true, duration: 300 });
-    }
-
-    function focusOnRandom() {
-      const visibleItems = state.objects.filter((item) => matchesFilters(item));
-      if (!visibleItems.length) return;
-      const randomItem = visibleItems[Math.floor(Math.random() * visibleItems.length)];
-      buildCard(randomItem);
-      if (randomItem.coordinates && window.mapInstance) {
-        window.mapInstance.setCenter(randomItem.coordinates, 11, { duration: 300 });
-      }
     }
 
     function setRouteStart(item) {
@@ -1139,10 +1084,14 @@
     }
 
     function buildRoute() {
-      const referencePoints = getRoutePoints();
-      if (referencePoints.length < 2) {
+      if (!state.route.start || !state.route.end) {
         return;
       }
+      const referencePoints = [
+        state.route.start.coordinates,
+        ...state.route.stops.map((stop) => stop.coordinates),
+        state.route.end.coordinates
+      ];
       if (state.route.instance) {
         window.mapInstance.geoObjects.remove(state.route.instance);
       }
@@ -1196,7 +1145,6 @@
     }
 
     function updateFilters() {
-      state.filters.search = filterSelectors.search.value.trim().toLowerCase();
       state.filters.district = filterSelectors.district.value;
       state.filters.type = filterSelectors.type.value;
       state.filters.access = filterSelectors.access.value;
@@ -1208,11 +1156,7 @@
 
     function setupFilterListeners() {
       Object.values(filterSelectors).forEach((select) => {
-        if (select.tagName === "INPUT") {
-          select.addEventListener("input", updateFilters);
-        } else {
-          select.addEventListener("change", updateFilters);
-        }
+        select.addEventListener("change", updateFilters);
       });
       resetFiltersBtn.addEventListener("click", () => {
         Object.values(filterSelectors).forEach((select) => {
@@ -1230,20 +1174,8 @@
       listPanel.classList.toggle("collapsed");
     }
 
-    async function initMap() {
-      mapStatus.classList.add("active");
-      try {
-        const rawObjects = await loadObjectsFromCsv();
-        state.objects = normalizeObjects(rawObjects);
-      } catch (error) {
-        console.error("Не удалось загрузить объекты из CSV.", error);
-        state.objects = [];
-        mapStatus.textContent = "Не удалось загрузить объекты. Проверьте CSV.";
-      }
-      statsTotal.textContent = String(state.objects.length);
-      if (state.objects.length) {
-        mapStatus.classList.remove("active");
-      }
+    function initMap() {
+      state.objects = normalizeObjects();
       initFilters();
       setupFilterListeners();
       applyRouteFromUrl();
@@ -1270,12 +1202,6 @@
 
         placemark.events.add("click", () => {
           buildCard(item);
-          state.placemarks.forEach(({ placemark: other }) => {
-            other.options.set("iconImageSize", [28, 28]);
-            other.options.set("iconImageOffset", [-14, -26]);
-          });
-          placemark.options.set("iconImageSize", [34, 34]);
-          placemark.options.set("iconImageOffset", [-17, -30]);
         });
 
         map.geoObjects.add(placemark);
@@ -1357,8 +1283,6 @@
 
     filtersToggle.addEventListener("click", toggleFilters);
     listToggle.addEventListener("click", toggleList);
-    showAllBtn.addEventListener("click", focusOnVisible);
-    randomObjectBtn.addEventListener("click", focusOnRandom);
 
     init();
   </script>
