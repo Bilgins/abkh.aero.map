@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Abkhaz Aero Map Demo</title>
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=cbbdcdf8-0385-45a0-9c1e-f219a5d65aed&lang=ru_RU" type="text/javascript"></script>
+  <style>
+    :root {
+      --bg: #0f1216;
+      --panel: #161b22;
+      --panel-2: #1e2530;
+      --text: #e6edf3;
+      --muted: #9aa6b2;
+      --accent: #58a6ff;
+      --danger: #ff6b6b;
+      --success: #3fb950;
+      --warning: #f2c94c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 20px;
+      background: var(--panel);
+      border-right: 1px solid #1f2937;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .map-wrapper {
+      position: relative;
+      min-height: 100vh;
+      background: #0b0f14;
+    }
+
+    .details-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: min(360px, 90vw);
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      z-index: 500;
+    }
+
+    .route-panel {
+      position: fixed;
+      left: 60%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      width: min(900px, 94vw);
+      z-index: 900;
+      pointer-events: none;
+    }
+
+    .route-panel .route-card {
+      pointer-events: auto;
+    }
+
+    .route-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+    }
+
+    .route-card h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    .map-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 18, 22, 0.9);
+      border: 1px solid #273142;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      z-index: 600;
+      display: none;
+    }
+
+    .map-overlay.active {
+      display: block;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      background: #1f2937;
+      border: 1px solid #334155;
+    }
+
+    .status-chip strong {
+      color: var(--text);
+    }
+
+    .card {
+      background: var(--panel-2);
+      border: 1px solid #273142;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .card.hidden {
+      display: none;
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .card-header h2 {
+      margin: 0;
+    }
+
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .filters {
+      display: grid;
+      gap: 12px;
+    }
+
+    .filters.collapsed .filters-body {
+      display: none;
+    }
+
+    .filters-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .filters-header button {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .filters-header .triangle {
+      font-size: 28px;
+      color: var(--muted);
+      transition: transform 0.2s ease;
+    }
+
+    .filters.collapsed .triangle {
+      transform: rotate(-90deg);
+    }
+
+    .filters-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: var(--text);
+    }
+
+    .filters label {
+      font-size: 12px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: var(--text);
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: #243447;
+      color: var(--text);
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #2a3b52;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0b0f14;
+    }
+
+    .btn.secondary {
+      background: #1f2a3a;
+      border-color: #2a384b;
+    }
+
+    .btn.danger {
+      background: #3a1f1f;
+      border-color: #5c2c2c;
+      color: var(--danger);
+    }
+
+    .btn.success {
+      background: #1f3a2a;
+      border-color: #2c5c3e;
+      color: var(--success);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .grid strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    details {
+      margin-top: 12px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .section-toggle {
+      background: #121a24;
+      border: 1px solid #283243;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .section-toggle span {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .section-toggle small {
+      color: var(--muted);
+    }
+
+    .section-content {
+      margin-top: 8px;
+      display: none;
+    }
+
+    .section-content.active {
+      display: block;
+    }
+
+    .route {
+      display: grid;
+      gap: 12px;
+    }
+
+    .route-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .route-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .route-summary strong {
+      color: var(--text);
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .list-item {
+      padding: 10px 12px;
+      border: 1px solid #2b3648;
+      border-radius: 10px;
+      background: #121824;
+      cursor: pointer;
+      display: grid;
+      gap: 4px;
+    }
+
+    .list-item span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .collapsible-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .collapsible-header h2 {
+      margin: 0;
+    }
+
+    .collapsible-header .triangle {
+      font-size: 28px;
+      color: var(--muted);
+      transition: transform 0.2s ease;
+    }
+
+    .collapsible.collapsed .triangle {
+      transform: rotate(-90deg);
+    }
+
+    .collapsible.collapsed .collapsible-body {
+      display: none;
+    }
+
+    .description-block {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .chip {
+      background: #1f2937;
+      border: 1px solid #334155;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip button {
+      background: transparent;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #0f172a;
+      border-radius: 16px;
+      width: min(1100px, 100%);
+      height: min(80vh, 740px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid #273142;
+    }
+
+    .modal-header {
+      background: #111827;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #1f2937;
+      flex: 0 0 auto;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 16px;
+      flex: 1 1 auto;
+    }
+
+    .modal-body {
+      position: relative;
+      flex: 1 1 auto;
+    }
+
+    .modal-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    @media (max-width: 960px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        order: 2;
+      }
+
+      .map-wrapper {
+        order: 1;
+        height: 50vh;
+      }
+
+      #map {
+        height: 50vh;
+      }
+
+      .details-panel {
+        position: static;
+        width: 100%;
+        max-height: none;
+        margin-top: 12px;
+      }
+
+      .route-panel {
+        position: static;
+        transform: none;
+        width: 100%;
+        margin-top: 12px;
+      }
+    }
+
+    .t-footer {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <section class="card">
+        <div class="filters" id="filters-panel">
+          <div class="filters-header" id="filters-toggle">
+            <h2>Фильтры</h2>
+            <span class="triangle">▾</span>
+          </div>
+          <div class="filters-body">
+            <div>
+              <label for="filter-search">Поиск по названию</label>
+              <input class="search-input" id="filter-search" type="text" placeholder="Например: крепость" />
+            </div>
+            <div>
+              <label for="filter-district">Район</label>
+              <select id="filter-district"></select>
+            </div>
+            <div>
+              <label for="filter-type">Тип объекта</label>
+              <select id="filter-type"></select>
+            </div>
+            <div>
+              <label for="filter-access">Итоговая доступность</label>
+              <select id="filter-access"></select>
+            </div>
+            <div>
+              <label for="filter-difficulty">Сложность</label>
+              <select id="filter-difficulty"></select>
+            </div>
+            <div>
+              <label for="filter-fee">Цена</label>
+              <select id="filter-fee"></select>
+            </div>
+            <button class="btn secondary" id="reset-filters">Сбросить фильтры</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="collapsible" id="list-panel">
+          <div class="collapsible-header" id="list-toggle">
+            <h2>Список объектов</h2>
+            <span class="triangle">▾</span>
+          </div>
+          <div class="collapsible-body">
+            <div class="list" id="object-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Статистика</h2>
+        <div class="route-summary">
+          <span class="status-chip">На карте: <strong id="stats-visible">0</strong></span>
+          <span class="status-chip">Всего: <strong id="stats-total">0</strong></span>
+        </div>
+        <div class="button-row" style="margin-top: 10px;">
+          <button class="btn secondary" id="show-all">Показать все на карте</button>
+          <button class="btn secondary" id="random-object">Случайный объект</button>
+        </div>
+      </section>
+
+    </aside>
+
+    <main class="map-wrapper">
+      <div id="map"></div>
+      <div class="map-overlay" id="map-status">Загрузка объектов…</div>
+      <aside class="details-panel">
+        <section class="card hidden" id="object-card">
+          <div class="card-header">
+            <h2 id="card-title"></h2>
+            <button class="btn danger" id="card-close" type="button">Закрыть</button>
+          </div>
+          <div class="description-block" id="card-description-inline"></div>
+          <div class="meta" id="card-meta"></div>
+          <div class="button-row" id="card-actions"></div>
+          <div id="card-grid"></div>
+        </section>
+      </aside>
+      <div class="route-panel">
+        <section class="card route-card">
+          <h2>Маршрут (демо)</h2>
+          <div class="route-summary" id="route-panel"></div>
+          <div class="button-row">
+            <button class="btn danger" id="route-clear">Очистить маршрут</button>
+            <button class="btn primary" id="route-build">Построить маршрут</button>
+            <button class="btn secondary" id="route-share">Поделиться маршрутом</button>
+            <button class="btn secondary" id="route-hide">Скрыть маршрут</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modal-title"></h3>
+        <button class="btn success" id="modal-start">Старт</button>
+        <button class="btn secondary" id="modal-add-stop">+Точка</button>
+        <button class="btn success" id="modal-finish">Финиш</button>
+        <button class="btn secondary" id="modal-open">Открыть в новой вкладке</button>
+        <button class="btn danger" id="modal-close">Закрыть</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="modal-iframe" title="3D"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const OBJECTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSvpNhww_FU-6ufnp7Qs42I4xX9m1qn7UvPIeTXAGgS7mRkTKc1_fFv744AslYUPNOSgJItAwEwxkOA/pub?gid=1695304486&single=true&output=csv";
+
+    const state = {
+      objects: [],
+      placemarks: [],
+      filters: {
+        search: "",
+        district: "",
+        type: "",
+        access: "",
+        difficulty: "",
+        fee: ""
+      },
+      selected: null,
+      route: {
+        start: null,
+        stops: [],
+        end: null,
+        visible: false,
+        instance: null
+      }
+    };
+
+    const markerColor = "#0b0f14";
+
+    function buildMarkerSvg(color) {
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+          <path d="M14 4 L24 22 Q25 24 23 24 H5 Q3 24 4 22 Z" fill="${color}" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" />
+        </svg>`
+      )}`;
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === "\"" && inQuotes && next === "\"") {
+          cell += "\"";
+          i += 1;
+          continue;
+        }
+        if (char === "\"") {
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if (char === "\n" && !inQuotes) {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = "";
+          continue;
+        }
+        if (char === "\r") {
+          continue;
+        }
+        if (char === "," && !inQuotes) {
+          row.push(cell);
+          cell = "";
+          continue;
+        }
+        cell += char;
+      }
+
+      if (cell.length || row.length) {
+        row.push(cell);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function normalizeHeader(header) {
+      return header
+        .replace(/^\uFEFF/, "")
+        .replace(/"/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\s/g, "_");
+    }
+
+    async function loadObjectsFromCsv() {
+      const response = await fetch(OBJECTS_CSV_URL, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Не удалось загрузить CSV: ${response.status}`);
+      }
+      const text = await response.text();
+      const rows = parseCsv(text).filter((row) => row.some((value) => value.trim() !== ""));
+      if (!rows.length) {
+        return [];
+      }
+      const headers = rows[0].map((header) => normalizeHeader(header));
+      return rows.slice(1).map((row) => {
+        const entry = {};
+        headers.forEach((key, index) => {
+          entry[key] = row[index] ?? "";
+        });
+        return entry;
+      });
+    }
+
+    const filterSelectors = {
+      search: document.getElementById("filter-search"),
+      district: document.getElementById("filter-district"),
+      type: document.getElementById("filter-type"),
+      access: document.getElementById("filter-access"),
+      difficulty: document.getElementById("filter-difficulty"),
+      fee: document.getElementById("filter-fee")
+    };
+
+    const card = document.getElementById("object-card");
+    const cardTitle = document.getElementById("card-title");
+    const cardMeta = document.getElementById("card-meta");
+    const cardActions = document.getElementById("card-actions");
+    const cardGrid = document.getElementById("card-grid");
+    const cardDescriptionInline = document.getElementById("card-description-inline");
+    const resetFiltersBtn = document.getElementById("reset-filters");
+    const filtersPanel = document.getElementById("filters-panel");
+    const filtersToggle = document.getElementById("filters-toggle");
+    const listPanel = document.getElementById("list-panel");
+    const listToggle = document.getElementById("list-toggle");
+    const mapStatus = document.getElementById("map-status");
+    const statsVisible = document.getElementById("stats-visible");
+    const statsTotal = document.getElementById("stats-total");
+    const showAllBtn = document.getElementById("show-all");
+    const randomObjectBtn = document.getElementById("random-object");
+
+    const routePanel = document.getElementById("route-panel");
+    const routeBuildBtn = document.getElementById("route-build");
+    const routeHideBtn = document.getElementById("route-hide");
+    const routeClearBtn = document.getElementById("route-clear");
+    const routeShareBtn = document.getElementById("route-share");
+    const objectList = document.getElementById("object-list");
+
+    const modalOverlay = document.getElementById("modal-overlay");
+    const modalTitle = document.getElementById("modal-title");
+    const modalIframe = document.getElementById("modal-iframe");
+    const modalStartBtn = document.getElementById("modal-start");
+    const modalAddStopBtn = document.getElementById("modal-add-stop");
+    const modalFinishBtn = document.getElementById("modal-finish");
+    const modalOpenBtn = document.getElementById("modal-open");
+    const modalCloseBtn = document.getElementById("modal-close");
+    const cardCloseBtn = document.getElementById("card-close");
+
+    function parseCoordinate(value) {
+      if (!value) {
+        return null;
+      }
+      const normalized = String(value).replace(",", ".").trim();
+      const number = Number.parseFloat(normalized);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function parseCoordinatePair(value) {
+      if (!value) {
+        return null;
+      }
+      const [latRaw, lonRaw] = value.split(";");
+      const lat = parseCoordinate(latRaw);
+      const lon = parseCoordinate(lonRaw);
+      if (lat === null || lon === null) {
+        return null;
+      }
+      return [lat, lon];
+    }
+
+    function normalizeObjects(items) {
+      return items.map((item) => {
+        const coords = item.coordinates_object
+          ? parseCoordinatePair(item.coordinates_object)
+          : [parseCoordinate(item.latitude), parseCoordinate(item.longitude)];
+        const normalizedCoords = coords && coords.every((value) => Number.isFinite(value)) ? coords : null;
+        const embedRaw = item.rtk_link_embedded || item.rtk_link || "";
+        const embedMatch = embedRaw.match(/src=["']([^"']+)["']/i);
+        const embedUrl = embedMatch ? embedMatch[1] : String(embedRaw).trim();
+        return {
+          ...item,
+          coordinates: normalizedCoords,
+          rtk_link_embedded: embedUrl,
+          feeCat: Number.parseFloat(String(item.fee_donation_adult).replace(",", ".")) > 0 ? "Платно" : "Бесплатно"
+        };
+      }).filter((item) => item.coordinates);
+    }
+
+    function buildSelectOptions(select, values) {
+      select.innerHTML = "";
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "Все";
+      select.appendChild(empty);
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    }
+
+    function initFilters() {
+      const districts = new Set();
+      const types = new Set();
+      const access = new Set();
+      const difficulties = new Set();
+      const fees = new Set();
+
+      state.objects.forEach((item) => {
+        if (item.district) districts.add(item.district);
+        if (item.object_type) types.add(item.object_type);
+        if (item.access_status) access.add(item.access_status);
+        if (item.difficulty_level) difficulties.add(item.difficulty_level);
+        if (item.feeCat) fees.add(item.feeCat);
+      });
+
+      buildSelectOptions(filterSelectors.district, Array.from(districts).sort());
+      buildSelectOptions(filterSelectors.type, Array.from(types).sort());
+      buildSelectOptions(filterSelectors.access, Array.from(access).sort());
+      buildSelectOptions(filterSelectors.difficulty, Array.from(difficulties).sort());
+      buildSelectOptions(filterSelectors.fee, Array.from(fees).sort());
+    }
+
+    function matchesFilters(item) {
+      const { search, district, type, access, difficulty, fee } = state.filters;
+      const matchesSearch = !search || (item.name || "").toLowerCase().includes(search);
+      return (!district || item.district === district)
+        && (!type || item.object_type === type)
+        && (!access || item.access_status === access)
+        && (!difficulty || item.difficulty_level === difficulty)
+        && (!fee || item.feeCat === fee)
+        && matchesSearch;
+    }
+
+    function updatePlacemarkVisibility() {
+      let visibleCount = 0;
+      state.placemarks.forEach(({ placemark, item }) => {
+        const visible = matchesFilters(item);
+        placemark.options.set("visible", visible);
+        if (visible) {
+          visibleCount += 1;
+        }
+      });
+      statsVisible.textContent = String(visibleCount);
+    }
+
+    function buildCard(item) {
+      if (!item) {
+        card.classList.add("hidden");
+        return;
+      }
+      state.selected = item;
+      card.classList.remove("hidden");
+      cardTitle.textContent = item.name;
+      cardMeta.textContent = `UID: ${item.uid} · Тип: ${item.object_type} · Район: ${item.district} · НП: ${item.locality}`;
+      cardDescriptionInline.textContent = item.description || "—";
+      cardActions.innerHTML = "";
+
+      if (item.rtk_link_embedded) {
+        const open3dBtn = document.createElement("button");
+        open3dBtn.className = "btn primary";
+        open3dBtn.textContent = "Открыть 3D";
+        open3dBtn.addEventListener("click", () => openModal(item));
+        cardActions.appendChild(open3dBtn);
+      }
+
+      const startBtn = document.createElement("button");
+      startBtn.className = "btn success";
+      startBtn.textContent = "Сделать стартом";
+      startBtn.addEventListener("click", () => setRouteStart(item));
+      cardActions.appendChild(startBtn);
+
+      const addBtn = document.createElement("button");
+      addBtn.className = "btn secondary";
+      addBtn.textContent = "Добавить в маршрут";
+      addBtn.addEventListener("click", () => addRouteStop(item));
+      cardActions.appendChild(addBtn);
+
+      const finishBtn = document.createElement("button");
+      finishBtn.className = "btn success";
+      finishBtn.textContent = "Сделать финишем";
+      finishBtn.addEventListener("click", () => setRouteEnd(item));
+      cardActions.appendChild(finishBtn);
+
+      const grouped = [
+        {
+          title: "Локация и доступ",
+          hint: "адрес, режим, часы",
+          items: [
+            { label: "Адрес/ориентир", value: item.address_landmark },
+            { label: "Режим доступа", value: item.access_mode },
+            { label: "Часы (backend)", value: item.hours_backend },
+            { label: "Часы (frontend)", value: item.hours_front },
+            { label: "Источник/проверка", value: item.source_checked }
+          ]
+        },
+        {
+          title: "Сложность и условия",
+          hint: "сложность, парковка, вода",
+          items: [
+            { label: "Сложность/набор", value: item.difficulty_details },
+            { label: "Сложность (уровень)", value: item.difficulty_level },
+            { label: "Парковка/пешком", value: item.parking_walk },
+            { label: "Вода рядом", value: item.water_near },
+            { label: "Высота", value: item.elevation_m }
+          ]
+        },
+        {
+          title: "Стоимость и ограничения",
+          hint: "цены, возраст",
+          items: [
+            { label: "Стоимость взрослый", value: item.fee_donation_adult },
+            { label: "Стоимость ребёнок", value: item.fee_donation_child },
+            { label: "Возраст ребёнка", value: item.age_child },
+            { label: "MIN_AGE", value: item.min_age },
+            { label: "Ограничения", value: item.restrictions }
+          ]
+        },
+        {
+          title: "Доступность и сервис",
+          hint: "ОВЗ, рекомендации",
+          items: [
+            { label: "Доступность", value: item.access_status },
+            { label: "Примечания", value: item.access_notes },
+            { label: "Dress-code", value: item.dress_code },
+            { label: "Дети/коляска", value: item.kids_stroller },
+            { label: "ОВЗ доступ", value: item.ovz_access },
+            { label: "ОВЗ туалет", value: item.ovz_toilet },
+            { label: "RTK выполнена", value: item.rtk_done },
+            { label: "Рек. длительность", value: item.duration_recommended }
+          ]
+        },
+        {
+          title: "Координаты",
+          hint: "объект и парковка",
+          items: [
+            { label: "Координаты объекта", value: item.coordinates_object },
+            { label: "Координаты парковки", value: item.coordinates_parking }
+          ]
+        }
+      ];
+
+      cardGrid.innerHTML = grouped.map((group, index) => {
+        const items = group.items.map((entry) => {
+          return `<div><strong>${entry.label}</strong>${entry.value || "—"}</div>`;
+        }).join("");
+        const isActive = index === 0 ? "active" : "";
+        return `
+          <div>
+            <button class="section-toggle" type="button" data-section="${index}">
+              <span>${group.title}</span>
+              <small>${group.hint}</small>
+            </button>
+            <div class="section-content grid ${isActive}" data-section-content="${index}">
+              ${items}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      cardGrid.querySelectorAll(".section-toggle").forEach((button) => {
+        button.addEventListener("click", () => {
+          const sectionId = button.dataset.section;
+          const content = cardGrid.querySelector(`[data-section-content=\"${sectionId}\"]`);
+          if (content) {
+            content.classList.toggle("active");
+          }
+        });
+      });
+
+    }
+
+    function closeCard() {
+      card.classList.add("hidden");
+      state.selected = null;
+    }
+
+    function renderRoute() {
+      const startName = state.route.start ? state.route.start.name : "—";
+      const endName = state.route.end ? state.route.end.name : "—";
+
+      const stops = state.route.stops;
+      const stopsHtml = stops.length
+        ? stops.map((stop) => {
+          return `<span class="chip">${stop.name}<button type="button" data-stop="${stop.uid}">×</button></span>`;
+        }).join("")
+        : "—";
+
+      routePanel.innerHTML = `
+        <div class="route-row"><strong>Старт:</strong> ${startName}</div>
+        <div class="route-row"><strong>Точки:</strong> ${stopsHtml}</div>
+        <div class="route-row"><strong>Финиш:</strong> ${endName}</div>
+      `;
+
+      routePanel.querySelectorAll("button[data-stop]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          removeRouteStop(btn.dataset.stop);
+        });
+      });
+
+      routeBuildBtn.disabled = getRoutePoints().length < 2;
+      routeHideBtn.disabled = !state.route.visible;
+      routeShareBtn.disabled = !(state.route.start || state.route.end || state.route.stops.length);
+    }
+
+    function getRoutePoints() {
+      const points = [];
+      if (state.route.start) {
+        points.push(state.route.start.coordinates);
+      }
+      if (state.route.stops.length) {
+        points.push(...state.route.stops.map((stop) => stop.coordinates));
+      }
+      if (state.route.end) {
+        points.push(state.route.end.coordinates);
+      }
+      if (!state.route.start && !state.route.end) {
+        return state.route.stops.map((stop) => stop.coordinates);
+      }
+      return points;
+    }
+
+    function updateObjectList() {
+      const items = state.objects.filter((item) => matchesFilters(item));
+      objectList.innerHTML = items.map((item) => {
+        return `
+          <div class="list-item" data-uid="${item.uid}">
+            <strong>${item.name}</strong>
+            <span>${item.object_type} · ${item.district} · ${item.locality}</span>
+          </div>
+        `;
+      }).join("");
+
+      objectList.querySelectorAll(".list-item").forEach((element) => {
+        element.addEventListener("click", () => {
+          const item = state.objects.find((obj) => obj.uid === element.dataset.uid);
+          if (item) {
+            buildCard(item);
+            if (item.coordinates && window.mapInstance) {
+              window.mapInstance.setCenter(item.coordinates, 11, { duration: 300 });
+            }
+          }
+        });
+      });
+    }
+
+    function focusOnVisible() {
+      const visibleItems = state.objects.filter((item) => matchesFilters(item));
+      if (!visibleItems.length || !window.mapInstance) return;
+      const coords = visibleItems.map((item) => item.coordinates);
+      window.mapInstance.setBounds(coords, { checkZoomRange: true, duration: 300 });
+    }
+
+    function focusOnRandom() {
+      const visibleItems = state.objects.filter((item) => matchesFilters(item));
+      if (!visibleItems.length) return;
+      const randomItem = visibleItems[Math.floor(Math.random() * visibleItems.length)];
+      buildCard(randomItem);
+      if (randomItem.coordinates && window.mapInstance) {
+        window.mapInstance.setCenter(randomItem.coordinates, 11, { duration: 300 });
+      }
+    }
+
+    function setRouteStart(item) {
+      state.route.start = item;
+      if (state.route.end && state.route.end.uid === item.uid) {
+        state.route.end = null;
+      }
+      state.route.stops = state.route.stops.filter((stop) => stop.uid !== item.uid);
+      renderRoute();
+    }
+
+    function setRouteEnd(item) {
+      state.route.end = item;
+      if (state.route.start && state.route.start.uid === item.uid) {
+        state.route.start = null;
+      }
+      state.route.stops = state.route.stops.filter((stop) => stop.uid !== item.uid);
+      renderRoute();
+    }
+
+    function addRouteStop(item) {
+      if (state.route.start && state.route.start.uid === item.uid) return;
+      if (state.route.end && state.route.end.uid === item.uid) return;
+      if (state.route.stops.some((stop) => stop.uid === item.uid)) return;
+      state.route.stops.push(item);
+      renderRoute();
+    }
+
+    function removeRouteStop(uid) {
+      state.route.stops = state.route.stops.filter((stop) => stop.uid !== uid);
+      renderRoute();
+    }
+
+    function clearRoute() {
+      state.route.start = null;
+      state.route.end = null;
+      state.route.stops = [];
+      hideRoute();
+      renderRoute();
+    }
+
+    function buildRoute() {
+      const referencePoints = getRoutePoints();
+      if (referencePoints.length < 2) {
+        return;
+      }
+      if (state.route.instance) {
+        window.mapInstance.geoObjects.remove(state.route.instance);
+      }
+      state.route.instance = new ymaps.multiRouter.MultiRoute({
+        referencePoints,
+        params: {
+          results: 1
+        }
+      }, {
+        boundsAutoApply: true,
+        routeActiveStrokeColor: "#58a6ff",
+        routeActiveStrokeWidth: 4
+      });
+      window.mapInstance.geoObjects.add(state.route.instance);
+      state.route.visible = true;
+      renderRoute();
+    }
+
+    function hideRoute() {
+      if (state.route.instance) {
+        window.mapInstance.geoObjects.remove(state.route.instance);
+      }
+      state.route.visible = false;
+      renderRoute();
+    }
+
+    function openModal(item) {
+      if (!item.rtk_link_embedded) {
+        return;
+      }
+      modalTitle.textContent = item.name;
+      modalIframe.src = item.rtk_link_embedded;
+      modalOverlay.classList.add("active");
+      modalOverlay.dataset.uid = item.uid;
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove("active");
+      modalIframe.src = "";
+      modalOverlay.dataset.uid = "";
+    }
+
+    function handleModalRoute(action) {
+      const uid = modalOverlay.dataset.uid;
+      if (!uid) return;
+      const item = state.objects.find((obj) => obj.uid === uid);
+      if (!item) return;
+      if (action === "start") setRouteStart(item);
+      if (action === "stop") addRouteStop(item);
+      if (action === "finish") setRouteEnd(item);
+    }
+
+    function updateFilters() {
+      state.filters.search = filterSelectors.search.value.trim().toLowerCase();
+      state.filters.district = filterSelectors.district.value;
+      state.filters.type = filterSelectors.type.value;
+      state.filters.access = filterSelectors.access.value;
+      state.filters.difficulty = filterSelectors.difficulty.value;
+      state.filters.fee = filterSelectors.fee.value;
+      updatePlacemarkVisibility();
+      updateObjectList();
+    }
+
+    function setupFilterListeners() {
+      Object.values(filterSelectors).forEach((select) => {
+        if (select.tagName === "INPUT") {
+          select.addEventListener("input", updateFilters);
+        } else {
+          select.addEventListener("change", updateFilters);
+        }
+      });
+      resetFiltersBtn.addEventListener("click", () => {
+        Object.values(filterSelectors).forEach((select) => {
+          select.value = "";
+        });
+        updateFilters();
+      });
+    }
+
+    function toggleFilters() {
+      filtersPanel.classList.toggle("collapsed");
+    }
+
+    function toggleList() {
+      listPanel.classList.toggle("collapsed");
+    }
+
+    async function initMap() {
+      mapStatus.classList.add("active");
+      try {
+        const rawObjects = await loadObjectsFromCsv();
+        state.objects = normalizeObjects(rawObjects);
+      } catch (error) {
+        console.error("Не удалось загрузить объекты из CSV.", error);
+        state.objects = [];
+        mapStatus.textContent = "Не удалось загрузить объекты. Проверьте CSV.";
+      }
+      statsTotal.textContent = String(state.objects.length);
+      if (state.objects.length) {
+        mapStatus.classList.remove("active");
+      }
+      initFilters();
+      setupFilterListeners();
+      applyRouteFromUrl();
+
+      renderRoute();
+
+      const map = new ymaps.Map("map", {
+        center: [43.1, 41.0],
+        zoom: 8,
+        controls: ["zoomControl"]
+      });
+      window.mapInstance = map;
+
+      state.placemarks = state.objects.map((item) => {
+        const color = markerColor;
+        const placemark = new ymaps.Placemark(item.coordinates, {
+          balloonContent: `<strong>${item.name}</strong>`
+        }, {
+          iconLayout: "default#image",
+          iconImageHref: buildMarkerSvg(color),
+          iconImageSize: [28, 28],
+          iconImageOffset: [-14, -26]
+        });
+
+        placemark.events.add("click", () => {
+          buildCard(item);
+          state.placemarks.forEach(({ placemark: other }) => {
+            other.options.set("iconImageSize", [28, 28]);
+            other.options.set("iconImageOffset", [-14, -26]);
+          });
+          placemark.options.set("iconImageSize", [34, 34]);
+          placemark.options.set("iconImageOffset", [-17, -30]);
+        });
+
+        map.geoObjects.add(placemark);
+        return { placemark, item };
+      });
+
+      updatePlacemarkVisibility();
+      updateObjectList();
+    }
+
+    function init() {
+      if (!window.ymaps) {
+        console.error("Yandex Maps API не загрузился. Проверьте apiKey и домены.");
+        return;
+      }
+      ymaps.ready(initMap);
+    }
+
+    function applyRouteFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const routeParam = params.get("route");
+      if (!routeParam) return;
+      try {
+        const decoded = JSON.parse(decodeURIComponent(routeParam));
+        if (decoded.start) {
+          const startItem = state.objects.find((item) => item.uid === decoded.start);
+          if (startItem) state.route.start = startItem;
+        }
+        if (decoded.end) {
+          const endItem = state.objects.find((item) => item.uid === decoded.end);
+          if (endItem) state.route.end = endItem;
+        }
+        if (Array.isArray(decoded.stops)) {
+          state.route.stops = decoded.stops
+            .map((uid) => state.objects.find((item) => item.uid === uid))
+            .filter(Boolean);
+        }
+        renderRoute();
+      } catch (error) {
+        console.warn("Не удалось восстановить маршрут из URL.", error);
+      }
+    }
+
+    modalOverlay.addEventListener("click", (event) => {
+      if (event.target === modalOverlay) {
+        closeModal();
+      }
+    });
+
+    modalCloseBtn.addEventListener("click", closeModal);
+    modalOpenBtn.addEventListener("click", () => {
+      if (modalIframe.src) {
+        window.open(modalIframe.src, "_blank", "noopener");
+      }
+    });
+
+    modalStartBtn.addEventListener("click", () => handleModalRoute("start"));
+    modalAddStopBtn.addEventListener("click", () => handleModalRoute("stop"));
+    modalFinishBtn.addEventListener("click", () => handleModalRoute("finish"));
+
+    cardCloseBtn.addEventListener("click", closeCard);
+
+    routeBuildBtn.addEventListener("click", buildRoute);
+    routeHideBtn.addEventListener("click", hideRoute);
+    routeClearBtn.addEventListener("click", clearRoute);
+    routeShareBtn.addEventListener("click", () => {
+      const payload = {
+        start: state.route.start ? state.route.start.uid : null,
+        stops: state.route.stops.map((stop) => stop.uid),
+        end: state.route.end ? state.route.end.uid : null
+      };
+      const data = encodeURIComponent(JSON.stringify(payload));
+      const shareUrl = `${window.location.origin}${window.location.pathname}?route=${data}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareUrl).catch(() => {});
+      }
+      alert("Ссылка маршрута скопирована. Можно вставить в чат или заметки.");
+    });
+
+    filtersToggle.addEventListener("click", toggleFilters);
+    listToggle.addEventListener("click", toggleList);
+    showAllBtn.addEventListener("click", focusOnVisible);
+    randomObjectBtn.addEventListener("click", focusOnRandom);
+
+    init();
+  </script>
+</body>
+</html>
