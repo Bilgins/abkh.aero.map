@@ -62,12 +62,17 @@
     }
 
     .route-panel {
-      position: absolute;
+      position: fixed;
       left: 60%;
       bottom: 16px;
-      transform: translateX(-60%);
+      transform: translateX(-50%);
       width: min(900px, 94vw);
-      z-index: 450;
+      z-index: 900;
+      pointer-events: none;
+    }
+
+    .route-panel .route-card {
+      pointer-events: auto;
     }
 
     .route-card {
@@ -162,6 +167,15 @@
     .filters-body {
       display: grid;
       gap: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: var(--text);
     }
 
     .filters label {
@@ -486,6 +500,10 @@
           </div>
           <div class="filters-body">
             <div>
+              <label for="filter-search">Поиск по названию</label>
+              <input class="search-input" id="filter-search" type="text" placeholder="Например: крепость" />
+            </div>
+            <div>
               <label for="filter-district">Район</label>
               <select id="filter-district"></select>
             </div>
@@ -570,149 +588,13 @@
   </div>
 
   <script>
-    const OBJECTS_RAW = [
-      {
-        uid: "ABH-001",
-        name: "Сухумская крепость",
-        district: "Сухум",
-        object_type: "Исторический объект",
-        access_status: "FULL",
-        difficulty_level: "Низкая",
-        fee_donation_adult: "200",
-        locality: "Сухум",
-        address_landmark: "Набережная Диоскуров, 1",
-        elevation_m: "12",
-        access_mode: "Свободный доступ",
-        hours_backend: "09:00-19:00",
-        hours_front: "Ежедневно",
-        source_checked: "Реестр 2024-05",
-        difficulty_details: "Асфальт",
-        parking_walk: "Парковка рядом",
-        water_near: "Да",
-        fee_donation_child: "100",
-        age_child: "6+",
-        min_age: "0",
-        restrictions: "Без ограничений",
-        access_notes: "Подходит для семей",
-        dress_code: "Удобная обувь",
-        kids_stroller: "Можно",
-        ovz_access: "Доступно",
-        ovz_toilet: "Нет",
-        rtk_done: "Да",
-        duration_recommended: "1 час",
-        coordinates_object: "43,0003; 41,0209",
-        coordinates_parking: "43,0010; 41,0198",
-        description: "Крепость на берегу моря с прогулочной зоной.",
-        rtk_link_embedded: "https://cloud.agisoft.com/embedded/123456"
-      },
-      {
-        uid: "ABH-002",
-        name: "Гегский водопад",
-        district: "Гудаута",
-        object_type: "Природный объект",
-        access_status: "DIFFICULT",
-        difficulty_level: "Высокая",
-        fee_donation_adult: "0",
-        locality: "Гега",
-        address_landmark: "Ущелье Гега",
-        elevation_m: "520",
-        access_mode: "По пропуску",
-        hours_backend: "10:00-18:00",
-        hours_front: "Лето",
-        source_checked: "Полевой объезд 2024-04",
-        difficulty_details: "Грунтовая дорога",
-        parking_walk: "Пешком 1 км",
-        water_near: "Да",
-        fee_donation_child: "0",
-        age_child: "7+",
-        min_age: "7",
-        restrictions: "Требуется внедорожник",
-        access_notes: "После дождя сложно",
-        dress_code: "Трекинг",
-        kids_stroller: "Нет",
-        ovz_access: "Нет",
-        ovz_toilet: "Нет",
-        rtk_done: "Нет",
-        duration_recommended: "2-3 часа",
-        coordinates_object: "43,3341; 40,4901",
-        coordinates_parking: "43,3305; 40,4865",
-        description: "Один из самых высоких водопадов Абхазии.",
-        rtk_link_embedded: ""
-      },
-      {
-        uid: "ABH-003",
-        name: "Пицундский маяк",
-        district: "Гагра",
-        object_type: "Морской объект",
-        access_status: "PARTIAL",
-        difficulty_level: "Средняя",
-        fee_donation_adult: "150",
-        locality: "Пицунда",
-        address_landmark: "Мыс Пицунда",
-        elevation_m: "35",
-        access_mode: "Экскурсия",
-        hours_backend: "10:00-17:00",
-        hours_front: "Выходные",
-        source_checked: "Реестр 2024-03",
-        difficulty_details: "Лесная тропа",
-        parking_walk: "Парковка 300 м",
-        water_near: "Да",
-        fee_donation_child: "75",
-        age_child: "5+",
-        min_age: "5",
-        restrictions: "Нужен гид",
-        access_notes: "Ограничено по времени",
-        dress_code: "Закрытая обувь",
-        kids_stroller: "Нет",
-        ovz_access: "Частично",
-        ovz_toilet: "Нет",
-        rtk_done: "Да",
-        duration_recommended: "1.5 часа",
-        coordinates_object: "43,1599; 40,3376",
-        coordinates_parking: "43,1580; 40,3390",
-        description: "Смотровая точка с видом на море.",
-        rtk_link_embedded: "https://cloud.agisoft.com/embedded/987654"
-      },
-      {
-        uid: "ABH-004",
-        name: "Чернореченский каньон",
-        district: "Очамчыра",
-        object_type: "Природный объект",
-        access_status: "FULL",
-        difficulty_level: "Средняя",
-        fee_donation_adult: "0",
-        locality: "Черноречье",
-        address_landmark: "Трасса Очамчыра",
-        elevation_m: "120",
-        access_mode: "Свободный доступ",
-        hours_backend: "",
-        hours_front: "Круглосуточно",
-        source_checked: "Полевой объезд 2024-02",
-        difficulty_details: "Лес",
-        parking_walk: "Парковка рядом",
-        water_near: "Да",
-        fee_donation_child: "0",
-        age_child: "0+",
-        min_age: "0",
-        restrictions: "Нет",
-        access_notes: "Берите воду",
-        dress_code: "Трекинг",
-        kids_stroller: "Нет",
-        ovz_access: "Нет",
-        ovz_toilet: "Нет",
-        rtk_done: "Нет",
-        duration_recommended: "2 часа",
-        coordinates_object: "42,9830; 41,4552",
-        coordinates_parking: "42,9820; 41,4561",
-        description: "Живописный каньон для прогулок.",
-        rtk_link_embedded: ""
-      }
-    ];
+    const OBJECTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSvpNhww_FU-6ufnp7Qs42I4xX9m1qn7UvPIeTXAGgS7mRkTKc1_fFv744AslYUPNOSgJItAwEwxkOA/pub?gid=1695304486&single=true&output=csv";
 
     const state = {
       objects: [],
       placemarks: [],
       filters: {
+        search: "",
         district: "",
         type: "",
         access: "",
@@ -739,7 +621,81 @@
       )}`;
     }
 
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === "\"" && inQuotes && next === "\"") {
+          cell += "\"";
+          i += 1;
+          continue;
+        }
+        if (char === "\"") {
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if (char === "\n" && !inQuotes) {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = "";
+          continue;
+        }
+        if (char === "\r") {
+          continue;
+        }
+        if (char === "," && !inQuotes) {
+          row.push(cell);
+          cell = "";
+          continue;
+        }
+        cell += char;
+      }
+
+      if (cell.length || row.length) {
+        row.push(cell);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function normalizeHeader(header) {
+      return header
+        .replace(/^\uFEFF/, "")
+        .replace(/"/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\s/g, "_");
+    }
+
+    async function loadObjectsFromCsv() {
+      const response = await fetch(OBJECTS_CSV_URL, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Не удалось загрузить CSV: ${response.status}`);
+      }
+      const text = await response.text();
+      const rows = parseCsv(text).filter((row) => row.some((value) => value.trim() !== ""));
+      if (!rows.length) {
+        return [];
+      }
+      const headers = rows[0].map((header) => normalizeHeader(header));
+      return rows.slice(1).map((row) => {
+        const entry = {};
+        headers.forEach((key, index) => {
+          entry[key] = row[index] ?? "";
+        });
+        return entry;
+      });
+    }
+
     const filterSelectors = {
+      search: document.getElementById("filter-search"),
       district: document.getElementById("filter-district"),
       type: document.getElementById("filter-type"),
       access: document.getElementById("filter-access"),
@@ -798,12 +754,19 @@
       return [lat, lon];
     }
 
-    function normalizeObjects() {
-      return OBJECTS_RAW.map((item) => {
-        const coords = parseCoordinatePair(item.coordinates_object);
+    function normalizeObjects(items) {
+      return items.map((item) => {
+        const coords = item.coordinates_object
+          ? parseCoordinatePair(item.coordinates_object)
+          : [parseCoordinate(item.latitude), parseCoordinate(item.longitude)];
+        const normalizedCoords = coords && coords.every((value) => Number.isFinite(value)) ? coords : null;
+        const embedRaw = item.rtk_link_embedded || item.rtk_link || "";
+        const embedMatch = embedRaw.match(/src=["']([^"']+)["']/i);
+        const embedUrl = embedMatch ? embedMatch[1] : String(embedRaw).trim();
         return {
           ...item,
-          coordinates: coords,
+          coordinates: normalizedCoords,
+          rtk_link_embedded: embedUrl,
           feeCat: Number.parseFloat(String(item.fee_donation_adult).replace(",", ".")) > 0 ? "Платно" : "Бесплатно"
         };
       }).filter((item) => item.coordinates);
@@ -846,12 +809,14 @@
     }
 
     function matchesFilters(item) {
-      const { district, type, access, difficulty, fee } = state.filters;
+      const { search, district, type, access, difficulty, fee } = state.filters;
+      const matchesSearch = !search || (item.name || "").toLowerCase().includes(search);
       return (!district || item.district === district)
         && (!type || item.object_type === type)
         && (!access || item.access_status === access)
         && (!difficulty || item.difficulty_level === difficulty)
-        && (!fee || item.feeCat === fee);
+        && (!fee || item.feeCat === fee)
+        && matchesSearch;
     }
 
     function updatePlacemarkVisibility() {
@@ -1015,9 +980,26 @@
         });
       });
 
-      routeBuildBtn.disabled = !(state.route.start && state.route.end);
+      routeBuildBtn.disabled = getRoutePoints().length < 2;
       routeHideBtn.disabled = !state.route.visible;
       routeShareBtn.disabled = !(state.route.start || state.route.end || state.route.stops.length);
+    }
+
+    function getRoutePoints() {
+      const points = [];
+      if (state.route.start) {
+        points.push(state.route.start.coordinates);
+      }
+      if (state.route.stops.length) {
+        points.push(...state.route.stops.map((stop) => stop.coordinates));
+      }
+      if (state.route.end) {
+        points.push(state.route.end.coordinates);
+      }
+      if (!state.route.start && !state.route.end) {
+        return state.route.stops.map((stop) => stop.coordinates);
+      }
+      return points;
     }
 
     function updateObjectList() {
@@ -1084,14 +1066,10 @@
     }
 
     function buildRoute() {
-      if (!state.route.start || !state.route.end) {
+      const referencePoints = getRoutePoints();
+      if (referencePoints.length < 2) {
         return;
       }
-      const referencePoints = [
-        state.route.start.coordinates,
-        ...state.route.stops.map((stop) => stop.coordinates),
-        state.route.end.coordinates
-      ];
       if (state.route.instance) {
         window.mapInstance.geoObjects.remove(state.route.instance);
       }
@@ -1145,6 +1123,7 @@
     }
 
     function updateFilters() {
+      state.filters.search = filterSelectors.search.value.trim().toLowerCase();
       state.filters.district = filterSelectors.district.value;
       state.filters.type = filterSelectors.type.value;
       state.filters.access = filterSelectors.access.value;
@@ -1156,7 +1135,11 @@
 
     function setupFilterListeners() {
       Object.values(filterSelectors).forEach((select) => {
-        select.addEventListener("change", updateFilters);
+        if (select.tagName === "INPUT") {
+          select.addEventListener("input", updateFilters);
+        } else {
+          select.addEventListener("change", updateFilters);
+        }
       });
       resetFiltersBtn.addEventListener("click", () => {
         Object.values(filterSelectors).forEach((select) => {
@@ -1174,8 +1157,14 @@
       listPanel.classList.toggle("collapsed");
     }
 
-    function initMap() {
-      state.objects = normalizeObjects();
+    async function initMap() {
+      try {
+        const rawObjects = await loadObjectsFromCsv();
+        state.objects = normalizeObjects(rawObjects);
+      } catch (error) {
+        console.error("Не удалось загрузить объекты из CSV.", error);
+        state.objects = [];
+      }
       initFilters();
       setupFilterListeners();
       applyRouteFromUrl();
