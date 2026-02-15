@@ -215,6 +215,21 @@
       color: #0b0f14;
     }
 
+    .external-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    .external-link:link,
+    .external-link:visited,
+    .external-link:hover,
+    .external-link:active {
+      color: #0b0f14;
+      text-decoration: none;
+    }
+
     .btn.secondary {
       background: #1f2a3a;
       border-color: #2a384b;
@@ -612,6 +627,8 @@
     };
 
     const markerColor = "#0b0f14";
+    const markerDoneColor = "#3fb950";
+    const projectPresentationUrl = "https://clck.ru/3Rp4eu";
 
     function buildMarkerSvg(color) {
       return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
@@ -770,6 +787,10 @@
           feeCat: Number.parseFloat(String(item.fee_donation_adult).replace(",", ".")) > 0 ? "Платно" : "Бесплатно"
         };
       }).filter((item) => item.coordinates);
+    }
+
+    function isRtkDone(item) {
+      return String(item.rtk_done || "").trim().toLowerCase() === "да";
     }
 
     function buildSelectOptions(select, values) {
@@ -1179,7 +1200,7 @@
       window.mapInstance = map;
 
       state.placemarks = state.objects.map((item) => {
-        const color = markerColor;
+        const color = isRtkDone(item) ? markerDoneColor : markerColor;
         const placemark = new ymaps.Placemark(item.coordinates, {
           balloonContent: `<strong>${item.name}</strong>`
         }, {
@@ -1199,6 +1220,14 @@
 
       updatePlacemarkVisibility();
       updateObjectList();
+
+      const presentationLink = document.createElement("a");
+      presentationLink.className = "btn primary external-link";
+      presentationLink.href = projectPresentationUrl;
+      presentationLink.target = "_blank";
+      presentationLink.rel = "noopener noreferrer";
+      presentationLink.textContent = "Презентация проекта";
+      document.querySelector(".sidebar").prepend(presentationLink);
     }
 
     function init() {
