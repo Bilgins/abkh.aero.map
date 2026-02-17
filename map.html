@@ -30,25 +30,40 @@
     }
 
     .page {
-      display: grid;
-      grid-template-columns: minmax(280px, 360px) 1fr;
-      min-height: 100vh;
+      min-height: 210vh;
+      position: relative;
     }
 
     .sidebar {
+      position: fixed;
+      inset: 0;
+      z-index: 850;
+      width: min(880px, 100vw);
+      margin: 0 auto;
       padding: 20px;
-      background: var(--panel);
-      border-right: 1px solid #1f2937;
+      background: rgba(22, 27, 34, 0.95);
+      border: 1px solid #273142;
+      border-radius: 24px 24px 0 0;
       display: flex;
       flex-direction: column;
       gap: 20px;
       overflow-y: auto;
+      transform: translateY(calc((1 - var(--sheet-progress, 0)) * 68vh));
+      box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(6px);
+      transition: border-radius 0.25s ease;
+    }
+
+    body.results-expanded .sidebar {
+      border-radius: 0;
     }
 
     .map-wrapper {
-      position: relative;
+      position: sticky;
+      top: 0;
       min-height: 100vh;
       background: #0b0f14;
+      z-index: 1;
     }
 
     .details-panel {
@@ -222,6 +237,13 @@
       text-decoration: none;
     }
 
+    a.btn.primary.external-link,
+    a.btn.primary.external-link:visited,
+    a.btn.primary.external-link:hover,
+    a.btn.primary.external-link:active {
+      color: #0b0f14 !important;
+    }
+
     .btn.secondary {
       background: #1f2a3a;
       border-color: #2a384b;
@@ -341,16 +363,38 @@
     .list-item {
       padding: 10px 12px;
       border: 1px solid #2b3648;
-      border-radius: 10px;
+      border-radius: 12px;
       background: #121824;
       cursor: pointer;
       display: grid;
-      gap: 4px;
+      gap: 8px;
+    }
+
+    .list-item-head {
+      display: grid;
+      grid-template-columns: 84px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .list-item-media {
+      width: 84px;
+      height: 72px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid #334155;
+      background: #0f172a;
     }
 
     .list-item span {
       font-size: 12px;
       color: var(--muted);
+    }
+
+    .list-item-description {
+      font-size: 12px;
+      color: #c5d1dc;
+      line-height: 1.35;
     }
 
     .collapsible-header {
@@ -376,6 +420,27 @@
     }
 
     .collapsible.collapsed .collapsible-body {
+      display: none;
+    }
+
+    .card-photo {
+      margin-bottom: 12px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #2b3648;
+      background: #0f172a;
+      max-height: 220px;
+    }
+
+    .card-photo img {
+      width: 100%;
+      height: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-photo.hidden {
       display: none;
     }
 
@@ -460,34 +525,33 @@
 
     @media (max-width: 960px) {
       .page {
-        grid-template-columns: 1fr;
+        min-height: 230vh;
       }
 
       .sidebar {
-        order: 2;
-      }
-
-      .map-wrapper {
-        order: 1;
-        height: 50vh;
-      }
-
-      #map {
-        height: 50vh;
+        width: 100vw;
+        padding: 14px;
+        transform: translateY(calc((1 - var(--sheet-progress, 0)) * 72vh));
       }
 
       .details-panel {
-        position: static;
-        width: 100%;
-        max-height: none;
-        margin-top: 12px;
+        top: 12px;
+        right: 12px;
+        width: min(92vw, 360px);
       }
 
       .route-panel {
-        position: static;
-        transform: none;
-        width: 100%;
-        margin-top: 12px;
+        left: 50%;
+        width: min(94vw, 720px);
+      }
+
+      .list-item-head {
+        grid-template-columns: 72px 1fr;
+      }
+
+      .list-item-media {
+        width: 72px;
+        height: 64px;
       }
     }
 
@@ -556,6 +620,9 @@
           <div class="card-header">
             <h2 id="card-title"></h2>
             <button class="btn danger" id="card-close" type="button">Закрыть</button>
+          </div>
+          <div class="card-photo hidden" id="card-photo-wrap">
+            <img id="card-photo" alt="Фото объекта" loading="lazy" />
           </div>
           <div class="description-block" id="card-description-inline"></div>
           <div class="meta" id="card-meta"></div>
@@ -717,6 +784,8 @@
     const cardMeta = document.getElementById("card-meta");
     const cardActions = document.getElementById("card-actions");
     const cardGrid = document.getElementById("card-grid");
+    const cardPhotoWrap = document.getElementById("card-photo-wrap");
+    const cardPhoto = document.getElementById("card-photo");
     const cardDescriptionInline = document.getElementById("card-description-inline");
     const resetFiltersBtn = document.getElementById("reset-filters");
     const filtersPanel = document.getElementById("filters-panel");
@@ -763,6 +832,34 @@
       return [lat, lon];
     }
 
+    function extractUrl(value) {
+      if (!value) return "";
+      const raw = String(value).trim();
+      if (!raw) return "";
+      const srcMatch = raw.match(/src=["']([^"']+)["']/i);
+      if (srcMatch) return srcMatch[1];
+      const mdMatch = raw.match(/\((https?:\/\/[^)\s]+)\)/i);
+      if (mdMatch) return mdMatch[1];
+      const urlMatch = raw.match(/https?:\/\/[^\s"'<>]+/i);
+      return urlMatch ? urlMatch[0] : "";
+    }
+
+    function getObjectImageUrl(item) {
+      const preferredKeys = ["photo", "photo_url", "image", "image_url", "img", "cover", "cover_image", "main_photo", "Фото"];
+      for (const key of preferredKeys) {
+        const url = extractUrl(item[key]);
+        if (url) return url;
+      }
+
+      for (const [key, value] of Object.entries(item)) {
+        if (!/(photo|image|img|фото)/i.test(key)) continue;
+        const url = extractUrl(value);
+        if (url) return url;
+      }
+
+      return "";
+    }
+
     function normalizeObjects(items) {
       return items.map((item) => {
         const coords = item.coordinates_object
@@ -776,6 +873,7 @@
           ...item,
           coordinates: normalizedCoords,
           rtk_link_embedded: embedUrl,
+          imageUrl: getObjectImageUrl(item),
           feeCat: Number.parseFloat(String(item.fee_donation_adult).replace(",", ".")) > 0 ? "Платно" : "Бесплатно"
         };
       }).filter((item) => item.coordinates);
@@ -842,6 +940,8 @@
     function buildCard(item) {
       if (!item) {
         card.classList.add("hidden");
+        cardPhoto.removeAttribute("src");
+        cardPhotoWrap.classList.add("hidden");
         return;
       }
       state.selected = item;
@@ -849,6 +949,13 @@
       cardTitle.textContent = item.name;
       cardMeta.textContent = `UID: ${item.uid} · Тип: ${item.object_type} · Район: ${item.district} · НП: ${item.locality}`;
       cardDescriptionInline.textContent = item.description || "—";
+      if (item.imageUrl) {
+        cardPhoto.src = item.imageUrl;
+        cardPhotoWrap.classList.remove("hidden");
+      } else {
+        cardPhoto.removeAttribute("src");
+        cardPhotoWrap.classList.add("hidden");
+      }
       cardActions.innerHTML = "";
 
       if (item.rtk_link_embedded) {
@@ -1018,10 +1125,22 @@
     function updateObjectList() {
       const items = state.objects.filter((item) => matchesFilters(item));
       objectList.innerHTML = items.map((item) => {
+        const imageHtml = item.imageUrl
+          ? `<img class="list-item-media" src="${item.imageUrl}" alt="${item.name}" loading="lazy" />`
+          : `<div class="list-item-media" aria-hidden="true"></div>`;
+        const description = (item.description || "").trim();
+        const preview = description.length > 140 ? `${description.slice(0, 140)}…` : description;
+
         return `
           <div class="list-item" data-uid="${item.uid}">
-            <strong>${item.name}</strong>
-            <span>${item.object_type} · ${item.district} · ${item.locality}</span>
+            <div class="list-item-head">
+              ${imageHtml}
+              <div>
+                <strong>${item.name}</strong>
+                <span>${item.object_type} · ${item.district} · ${item.locality}</span>
+              </div>
+            </div>
+            ${preview ? `<div class="list-item-description">${preview}</div>` : ""}
           </div>
         `;
       }).join("");
@@ -1170,6 +1289,13 @@
       listPanel.classList.toggle("collapsed");
     }
 
+    function updateScrollDrivenPanel() {
+      const maxScroll = window.innerHeight * 0.95;
+      const progress = Math.max(0, Math.min(1, window.scrollY / maxScroll));
+      document.documentElement.style.setProperty("--sheet-progress", progress.toFixed(3));
+      document.body.classList.toggle("results-expanded", progress > 0.98);
+    }
+
     async function initMap() {
       try {
         const rawObjects = await loadObjectsFromCsv();
@@ -1293,6 +1419,10 @@
 
     filtersToggle.addEventListener("click", toggleFilters);
     listToggle.addEventListener("click", toggleList);
+
+    window.addEventListener("scroll", updateScrollDrivenPanel, { passive: true });
+    window.addEventListener("resize", updateScrollDrivenPanel);
+    updateScrollDrivenPanel();
 
     init();
   </script>
